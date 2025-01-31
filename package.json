@@ -1,0 +1,14 @@
+{
+	"name": "socket-chat-test",
+	"version": "0.0.1",
+	"description": "my first socket.io app",
+	"type": "module",
+	"dependencies": {
+		"express": "^4.19.2",
+		"express-handlebars": "^8.0.1",
+		"hammerjs": "^2.0.8",
+		"socket.io": "^4.7.5",
+		"sqlite": "^5.1.1",
+		"sqlite3": "^5.1.7"
+	}
+}

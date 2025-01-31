@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Jost:ital,wght@0,100..900;1,100..900&family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap" rel="stylesheet">
+
+        <link rel="icon" href="logo.png">
+        <link rel="apple-touch-icon" href="logo.png">
+        <link rel="manifest" href="manifest.json" />
+
+        <link rel="stylesheet" href="/style/index.css">
+        <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+		<script src="/socket.io/socket.io.js"></script>
+        <script src="/script/utilities.js"></script>
+        <script src="/script/index.js"></script>
+        <script src="/script/menuInteraction.js"></script>
+        <script src="/script/itemInteraction.js"></script>
+        <title>Document</title>
+    </head>
+
+	<body>
+        <input hidden type="checkbox" id="add-item-checkbox">
+        <section class="roboto-flex-500" id="create-edit-menu-background">
+            <form id="create-edit-menu">
+                <input hidden id="product-id" type="text" name="productId">
+                <h1>Shopping list</h1>
+
+                <input id="product-name" class="menu-item roboto-flex-500" type="text" name="productName" placeholder="Name">
+
+                <div class="menu-item">
+                    <input id="quantity" class="roboto-flex-500" type="number" step="any" name="quantity" placeholder="Quantity">
+                    <input hidden type="checkbox" id="unit-checkbox">
+                    <label for="unit-checkbox">Unit</label>
+                    <section>
+                        <ul class="roboto-flex-500">
+                            <input hidden type="radio" name="unit" value="none" checked="true">
+                            <li>
+                                <input hidden type="radio" name="unit" value="kg" id="unit-kg">
+                                <label for="unit-kg">kg</label>
+                            </li>
+                            <li>
+                                <input hidden type="radio" name="unit" value="g" id="unit-g">
+                                <label for="unit-g">g</label>
+                            </li>
+                            <li>
+                                <input hidden type="radio" name="unit" value="l" id="unit-l">
+                                <label for="unit-l">l</label>
+                            </li>
+                            <li>
+                                <input hidden type="radio" name="unit" value="ml" id="unit-ml">
+                                <label for="unit-ml">ml</label>
+                            </li>
+                            <li>
+                                <input hidden type="radio" name="unit" value="pkg" id="unit-pkg">
+                                <label for="unit-pkg">pkg</label>
+                            </li>
+                        </ul>
+                    </section>
+                </div>
+
+                <input id="price" class="menu-item roboto-flex-500" type="number" step="any" name="price" placeholder="Price">
+
+                <div class="menu-item">
+                    <input hidden type="checkbox" id="market-checkbox">
+                    <label for="market-checkbox">Shop</label>
+                    <section>
+                        <ul class="roboto-flex-500">
+                             <input hidden type="radio" name="market" value="?" checked="true">
+                            <li>
+                                <input hidden type="radio" name="market" value="kaufland" id="market-kaufland">
+                                <label for="market-kaufland">Kaufland</label>
+                            </li>
+                            <li>
+                                <input hidden type="radio" name="market" value="lidl" id="market-lidl">
+                                <label for="market-lidl">Lidl</label>
+                            </li>
+                            <li>
+                                <input hidden type="radio" name="market" value="billa" id="market-billa">
+                                <label for="market-billa">Billa</label>
+                            </li>
+                        </ul>
+                    </section>
+                </div>
+
+                <button class="menu-item roboto-flex-500" type="submit">+</button>
+            </form>
+        </section>
+
+		<section class="roboto-flex-500" id="header-section">
+			<h1>Shopping list</h1>
+			<label for="add-item-checkbox" class="roboto-flex-500" id="add-item">Add</label>
+		</section>
+
+        <section id="itmes-section">
+            <div class="roboto-flex-500" id="unbought-wrapper">
+                <div>
+                    <h2>To buy</h2>
+                </div>
+
+		        <section id="unbought-list"></section>
+            </div>	
+
+            <div class="roboto-flex-500" id="bought-wrapper">
+                <div>
+		        	<div>
+                        <h2>Bought</h2>
+                    </div>
+		        	<button id="delete-bought-item"><img src="/shopping-app-trash-big.png" alt=""></button>
+		        </div>
+
+                <section id="bought-list"></section>
+            </div>
+        </section>
+
+        <section id="cost-section" class="roboto-flex-500">
+            <div>
+                <div>
+                    <span>To buy</span>   
+                    <span>Bought</span>
+                </div>
+                <div>
+                    <div>
+                        <span id="unbought-price">0</span>
+                        <svg width="30" height="46" viewBox="0 0 30 46" fill="none" xmlns="http://www.w3.org/2000/svg"><g filter="url(#filter0_d_9_244)"><path d="M0 0C18 0 18 0 18 0C10 11 18 32 13 42L12 44C12 44 12 44 12 44C10 47 10 47 10 47H0" fill="#FFDDAD"/></g><defs><filter id="filter0_d_9_244" x="0" y="0.5" width="127.297" height="55" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset dx="4" dy="1"/><feGaussianBlur stdDeviation="2"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/><feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_9_244" result="shape"/></filter></defs></svg>
+                    </div>
+                    <div>
+                        <span id="bought-price" >0</span>
+                    </div>  
+                </div>
+            </div>
+            <div>
+                <span>Total</span>
+                <div id="total-price">0</div>
+            </div>
+        </section>
+	</body>
+</html>

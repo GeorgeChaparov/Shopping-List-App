@@ -1,0 +1,21 @@
+{
+    "short_name": "Shoping list",
+    "name": "Shoping list",
+    "icons": [
+      {
+        "src": "https://cdn.glitch.global/06d7a800-92c9-4fcb-ac42-54885294e8be/logo.png?v=1737888883418",
+        "sizes": "800x800",
+        "type": "image/png"
+      }
+    ],
+    "start_url": ".",
+    "display": "fullscreen",
+    "theme_color": "#000000",
+    "background_color": "#ffffff",
+    "lang": "en",
+    "orientation": "portrait",
+    "categories": [
+      "shopping",
+      "utilities"
+    ]
+  }
