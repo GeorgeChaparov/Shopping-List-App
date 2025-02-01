@@ -1,4 +1,7 @@
 import { insertItem, deleteItem, deleteAllBoughtItems, checkForItem, getItemById, getItems, updateItem } from "./db.js";
+import { MarketEnum, CategoryEnum, ElementTypeEnum} from "./utilities.js";
+
+const markets = new Map();
 
 async function socketEvents(socket, app, io) {
     //Adds an item to the database.
@@ -13,6 +16,28 @@ async function socketEvents(socket, app, io) {
         if (result === undefined) {
             return;
         }
+
+        let elementToAdd = {
+            renderedElement: "",
+            type: 0
+        };
+
+        const market = markets.get(item.market);
+        if (!market) {
+            markets.set(item.market, []);
+
+            elementToAdd.renderedElement = await renderMarketView(item);
+            elementToAdd.type = ElementTypeEnum.Market;
+        }
+
+        if (!market.includes(item.category)) {
+            market.push(item.category);
+
+            elementToAdd.renderedElement = await renderCategoryView(item);
+            elementToAdd.type = ElementTypeEnum.Category;
+        }
+
+        
 
         item.productId = result.lastID;
         const itemElement = await renderItemView(item);
@@ -103,8 +128,6 @@ async function socketEvents(socket, app, io) {
 
 		socket.emit("add item", itemElements, prices);
 	}
-
-
     
     /**
      * Updates the given item in the database and then dispaches the event with the given name.
@@ -167,6 +190,24 @@ async function socketEvents(socket, app, io) {
         item.market = item.market[0].toUpperCase();
         return new Promise((resolve, reject) => {
             app.render('item', {...item}, (err, html) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(html);
+                }
+            });
+        });
+    };
+
+    /**
+     * Used to render items.
+     * @param {object} item 
+     * @returns Returns rendered item.
+     */
+    async function renderCategoryView(category) {   
+
+        return new Promise((resolve, reject) => {
+            app.render('category', {...category}, (err, html) => {
                 if (err) {
                     reject(err);
                 } else {

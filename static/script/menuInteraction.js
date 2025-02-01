@@ -16,31 +16,34 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
     const productQuantity = document.getElementById("quantity");
 
-    // Units Interaction.
-    const unitCheckbox = document.getElementById("unit-checkbox");
-    const unitLabel = document.querySelector("#unit-checkbox + label");
-    const units = document.querySelectorAll("input[name='unit']");
+    const dropdownMenusCheckbox = document.querySelectorAll("#create-edit-menu input[id$='checkbox']");
+    /** * @type {Array<Element>}*/
+    const dropdownMenusLabel = [];
+    /** * @type {Array<NodeListOf<Element>>}*/
+    const dropdownMenusValues = [];
 
-    const productPrice = document.getElementById("price");
+    dropdownMenusCheckbox.forEach(checkbox => {
+        const checkboxId = checkbox.id;
+        const checkboxType = checkbox.id.split("-")[0];
 
-    // Market Interaction.
-    const marketCheckbox = document.getElementById("market-checkbox");
-    const marketLabel = document.querySelector("#market-checkbox + label");
-    const markets = document.querySelectorAll("input[name='market']");
+        dropdownMenusLabel.push(document.querySelector(`#create-edit-menu #${checkboxId} + label`));
+        dropdownMenusValues.push(document.querySelectorAll(`#create-edit-menu input[name='${checkboxType}']`));
 
-    unitsInteraction();
-    unitCheckbox.addEventListener("change", (e) => {
-        if (e.target.checked) {
-            marketCheckbox.checked = false;
-        }
+        checkbox.addEventListener("change", (e) => {
+            const target = e.target;
+
+            if (target.checked) {
+                dropdownMenusCheckbox.forEach(checkbox => {
+                    if (checkbox !== target) {
+                        checkbox.checked = false;
+                    }
+                });
+            }
+        });
     });
 
-    marketsInteraction();
-    marketCheckbox.addEventListener("change", (e) => {
-        if (e.target.checked) {
-            unitCheckbox.checked = false;
-        }
-    });
+    dropdownMenusInteraction();
+
     menuBackground.addEventListener("click", (e) => {
         if (e.target === menuBackground) {
             addItemCheckbox.checked = false;
@@ -53,11 +56,15 @@ document.addEventListener("DOMContentLoaded", (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
 
-        const item = {}
+        const item = {};
         for (const [key, value] of formData.entries()) {
-            if ((value === "" && (key != "market" && key != "productId")) || value === "none") {
-                alert("There cannot be empty values");
-                return;
+            if (value === "" || value === "none") {
+
+                // Market and category can be empty. The id is not set by the user.
+                if (key != "market" && key != "category" && key != "productId") {
+                    alert("There cannot be empty values");
+                    return;
+                }
             }
 
             item[key] = value;
@@ -78,8 +85,9 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
     menu.addEventListener("click", (e) => {
         if (e.target === menu) {
-            unitCheckbox.checked = false;
-            marketCheckbox.checked = false;
+            dropdownMenusCheckbox.forEach(checkbox => {
+                checkbox.checked = false;
+            });
         }      
     });
 
@@ -88,39 +96,34 @@ document.addEventListener("DOMContentLoaded", (e) => {
         resetElement(productId, {value: ""});
         resetElement(productName, {value: ""});
         resetElement(productQuantity, {value: ""});
-        resetElement(unitCheckbox, {checked: false});
-        resetElement(unitLabel, {innerHTML: "Unit"});
-        resetElement(units[0], {checked: true});
-        resetElement(productPrice, {value: ""});
-        resetElement(marketCheckbox, {checked: false});
-        resetElement(marketLabel, {innerHTML: "Shop"});
-        marketLabel.removeAttribute("style");
-        resetElement(markets[0], {checked: true});
-    }
-
-    function unitsInteraction() {
-        units.forEach(unit => {
-            unit.addEventListener("click", (e) => {
-                const checkbox = e.target;
-                if (checkbox.checked) {             
-                    unitLabel.innerHTML = checkbox.value;
-                }
-
-                unitCheckbox.checked = false;
-            });
+        dropdownMenusCheckbox.forEach(checkbox => {
+            resetElement(checkbox, {checked: false});
+        });
+        dropdownMenusLabel.forEach((label, index) => {
+            resetElement(label, {innerHTML: dropdownMenusValues[index].value});
+            label.removeAttribute("style")
+        });
+        dropdownMenusValues.forEach(values => {
+            resetElement(values[0], {checked: true});
         });
     }
 
-    function marketsInteraction() {
-        markets.forEach(market => {
-            market.addEventListener("click", (e) => {
-                const checkbox = e.target;
-                if (checkbox.checked) {             
-                    marketLabel.innerHTML = firstCharToUpper(checkbox.value);
-                    marketLabel.style.color = "black";
-                }
-
-                marketCheckbox.checked = false;
+    function dropdownMenusInteraction() {
+        dropdownMenusValues.forEach((values, index) => {
+            values.forEach(value => {
+                value.addEventListener("click", (e) => {
+                    const target = e.target;
+                    if (target.checked) {             
+                        dropdownMenusLabel[index].innerHTML = target.value;
+                        dropdownMenusLabel[index].style.color = "black";
+                    }
+    
+                    dropdownMenusCheckbox.forEach(checkbox => {
+                        if (checkbox.id.includes(value.name)) {
+                            checkbox.checked = false;
+                        }
+                    });
+                });
             });
         });
     }
@@ -142,10 +145,18 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
         productPrice.value = item.price;
 
+        categories.forEach(category => {
+            if (category.value === item.category) {
+                category.checked = true;
+                categoryLabel.innerHTML = item.category
+                categoryLabel.style.color = "black";
+            }
+        });
+
         markets.forEach(market => {
             if (market.value === item.market) {
                 market.checked = true;
-                marketLabel.innerHTML = firstCharToUpper(item.market);
+                marketLabel.innerHTML = item.market
                 marketLabel.style.color = "black";
             }
         });

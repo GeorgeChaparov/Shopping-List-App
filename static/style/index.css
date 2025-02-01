@@ -400,14 +400,14 @@ input[type="number"] {
     display: block;
 }
 
-#create-edit-menu > div:last-of-type {
+#create-edit-menu > div:not(:first-of-type) {
     width: 80%;
     height: 42px;  
     
     position: relative;
 }
 
-#create-edit-menu > div:last-of-type > label {
+#create-edit-menu > div:not(:first-of-type) > label {
     width: 100%;
     height: 100%;
 
@@ -427,7 +427,7 @@ input[type="number"] {
     cursor: pointer;
 }
 
-#create-edit-menu > div:last-of-type > section {
+#create-edit-menu > div:not(:first-of-type) > section {
     width: calc(100% - 10px);
     height: fit-content;
     
@@ -446,7 +446,7 @@ input[type="number"] {
     z-index: 1;
 }
 
-#create-edit-menu > div:last-of-type > section > ul {
+#create-edit-menu > div:not(:first-of-type) > section > ul {
     width: 100%;
     height: fit-content;
 
@@ -456,7 +456,7 @@ input[type="number"] {
     margin: 0;
 }
 
-#create-edit-menu > div:last-of-type > section > ul > li {
+#create-edit-menu > div:not(:first-of-type) > section > ul > li {
     width: 100%;
     height: fit-content;
 
@@ -468,7 +468,7 @@ input[type="number"] {
     cursor: pointer;
 }
 
-#create-edit-menu > div:last-of-type > section > ul > li > label {
+#create-edit-menu > div:not(:first-of-type) > section > ul > li > label {
     width: 100%;
     height: fit-content;
 

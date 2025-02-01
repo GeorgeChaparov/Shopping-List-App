@@ -5,6 +5,8 @@ import { dirname, join } from "node:path";
 import { Server } from "socket.io";
 import { create } from'express-handlebars';
 import socketEvents from "./private/sockets.js";
+import Handlebars from "handlebars";
+import fs from "fs";
 
 const app = express();
 const server = createServer(app);
@@ -21,6 +23,9 @@ app.set('view engine', 'hbs');
 app.set('views', './views');
 
 app.use(express.static(join(__dirname, "static")));
+
+const itemPartialHtml = fs.readFileSync("./views/Item.hbs", "utf8");
+Handlebars.registerPartial("item", itemPartialHtml);
 
 app.get('/', (req, res) => {
     res.render('index', {});

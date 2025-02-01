@@ -66,21 +66,55 @@
                 <input id="price" class="menu-item roboto-flex-500" type="number" step="any" name="price" placeholder="Price">
 
                 <div class="menu-item">
+                    <input hidden type="checkbox" id="category-checkbox">
+                    <label for="category-checkbox">Category</label>
+                    <section>
+                        <ul class="roboto-flex-500">
+                             <input hidden type="radio" name="category" value="Undefined Category" checked="true">
+                            <li>
+                                <input hidden type="radio" name="category" value="Fruit and Veggies" id="category-fruit_and_veggies">
+                                <label for="category-fruit_and_veggies">Fruit and Veggies</label>
+                            </li>
+                            <li>
+                                <input hidden type="radio" name="category" value="Meat" id="category-Meat">
+                                <label for="category-Meat">Meat</label>
+                            </li>
+                            <li>
+                                <input hidden type="radio" name="category" value="Cheese and Milk" id="category-cheese_and_milk">
+                                <label for="category-cheese_and_milk">Cheese and Milk</label>
+                            </li>
+                            <li>
+                                <input hidden type="radio" name="category" value="Breads and Snacks" id="category-breads_and_snacks">
+                                <label for="category-breads_and_snacks">Breads and Snacks</label>
+                            </li>
+                            <li>
+                                <input hidden type="radio" name="category" value="Household objects" id="category-household_objects">
+                                <label for="category-household_objects">Household objects</label>
+                            </li>
+                            <li>
+                                <input hidden type="radio" name="category" value="Drinks" id="category-drinks">
+                                <label for="category-drinks">Drinks</label>
+                            </li>
+                        </ul>
+                    </section>
+                </div>
+
+                <div class="menu-item">
                     <input hidden type="checkbox" id="market-checkbox">
                     <label for="market-checkbox">Shop</label>
                     <section>
                         <ul class="roboto-flex-500">
                              <input hidden type="radio" name="market" value="?" checked="true">
                             <li>
-                                <input hidden type="radio" name="market" value="kaufland" id="market-kaufland">
+                                <input hidden type="radio" name="market" value="Kaufland" id="market-kaufland">
                                 <label for="market-kaufland">Kaufland</label>
                             </li>
                             <li>
-                                <input hidden type="radio" name="market" value="lidl" id="market-lidl">
+                                <input hidden type="radio" name="market" value="Lidl" id="market-lidl">
                                 <label for="market-lidl">Lidl</label>
                             </li>
                             <li>
-                                <input hidden type="radio" name="market" value="billa" id="market-billa">
+                                <input hidden type="radio" name="market" value="Billa" id="market-billa">
                                 <label for="market-billa">Billa</label>
                             </li>
                         </ul>

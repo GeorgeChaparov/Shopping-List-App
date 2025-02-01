@@ -4,9 +4,10 @@ import { open } from "sqlite";
 const db = await open({
 	filename: "ShoppingList.db",
 	driver: sqlite3.Database,
-});-
+});
 
 await db.exec(`
+    drop table items;
     CREATE TABLE IF NOT EXISTS items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         isBought INTEGER NOT NULL DEFAULT 0,
@@ -15,7 +16,18 @@ await db.exec(`
     	quantity INTEGER NOT NULL CHECK (quantity > -1),
     	unit TEXT NOT NULL,
     	price INTEGER DEFAULT 0,
-        isBeingEdit INTEGER DEFAULT 0
+        isBeingEdit INTEGER DEFAULT 0,
+        category TEXT NOT NULL CHECK (
+            category IN (
+                'Undefined Category',
+                'Fruit and Veggies', 
+                'Meat', 
+                'Cheese and Milk', 
+                'Breads and Snacks', 
+                'Household objects', 
+                'Drinks'
+            )
+        )
     );
 `);
 
@@ -26,7 +38,7 @@ await db.exec(`
  */
 async function insertItem(item) {
     try {           
-        const result = await db.run("INSERT INTO items (isBought, market, content, quantity, unit, price) VALUES (?, ?, ?, ?, ?, ?)", [item.isBought, item.market, item.productName, item.quantity, item.unit, item.price]);
+        const result = await db.run("INSERT INTO items (isBought, market, content, quantity, unit, price, category) VALUES (?, ?, ?, ?, ?, ?, ?)", [item.isBought, item.market, item.productName, item.quantity, item.unit, item.price, item.category]);
         return result;
     } catch (e) {
         console.error("ERROR while trying to insert the new item. Error: ", e);
@@ -91,7 +103,7 @@ async function getItemById(itemId) {
  */
 async function getItems() {
     try {
-        const result = await db.all("SELECT id, content, isBought, market, quantity, unit, price FROM items");
+        const result = await db.all("SELECT id, content, isBought, market, quantity, unit, price, category FROM items");
 
         return result;
     } catch (e) {
@@ -106,7 +118,7 @@ async function getItems() {
  */
 async function updateItem(item) {
     try {
-        const result = await db.run("UPDATE items SET isBought = ?, market = ?, content = ?, quantity = ?, unit = ?, price = ?, isBeingEdit = ? where id = ?", [item.isBought, item.market, item.productName, item.quantity, item.unit, item.price, item.isBeingEdit, item.productId]);
+        const result = await db.run("UPDATE items SET isBought = ?, market = ?, content = ?, quantity = ?, unit = ?, price = ?, isBeingEdit = ?, category = ? where id = ?", [item.isBought, item.market, item.productName, item.quantity, item.unit, item.price, item.isBeingEdit, item.category, item.productId]);
         
         if (result.changes === 0) {
             return false;
@@ -119,18 +131,51 @@ async function updateItem(item) {
 }
 
 /**
- * Tryis to select the given item from the database.
+ * Tryis to select the given it from the database.
  * @param {object} item The item to be checked for. 
  * @returns {boolean} Returns if the item is found or not.
  */
 async function checkForItem(item) {
     try {
-        const result = await db.get("SELECT * FROM items WHERE market = ? AND content = ? AND quantity = ? AND unit = ? AND price = ?", [item.market, item.productName, item.quantity, item.unit, item.price]);
+        const result = await db.get("SELECT * FROM items WHERE market = ? AND content = ? AND quantity = ? AND unit = ? AND price = ? AND category = ?", [item.market, item.productName, item.quantity, item.unit, item.price, item.category]);
     
         if (result === undefined) {
             return false;
         }
      
+        return true;
+
+    } catch (e) {
+        console.error(`ERROR while checking if item with the same props exist. Error: `, e); 
+    }
+}
+
+async function getItemsByMarketAndCategory(marketName, categoryName) {
+    try {
+        const result = await db.all("SELECT market, category, json_group_array( json_object( 'id', id, 'isBought', isBought, 'content', content,'quantity', quantity,'unit', unit,'price', price)) AS items FROM items GROUP BY market, category WHERE market = ?, category = ?;", [marketName, categoryName]);
+
+        const transformedData = result.reduce((acc, row) => {
+            const { market, category, items } = row;
+
+            const parsedItems = JSON.parse(items);
+
+            let marketObj = acc.find(m => m.name === market);
+            if (!marketObj) {
+                marketObj = { name: market, categories: [] };
+                acc.push(marketObj);
+            }
+
+            let categoryObj = marketObj.categories.find(c => c.name === category);
+            if (!categoryObj) {
+                categoryObj = { name: category, items: [] };
+                marketObj.categories.push(categoryObj);
+            }
+
+            categoryObj.items.push(...parsedItems);
+        
+            return acc;
+        }, []);
+
         return true;
 
     } catch (e) {
