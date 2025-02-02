@@ -1,12 +1,27 @@
-import { insertItem, deleteItem, deleteAllBoughtItems, checkForItem, getItemById, getItems, updateItem } from "./db.js";
-import { MarketEnum, CategoryEnum, ElementTypeEnum} from "./utilities.js";
-
-const markets = new Map();
+import { insertMarket, deleteMarket, getMarket } from "./database_interactions/market.js";
+import { insertCategory, deleteCategory, getCategory } from "./database_interactions/category.js";
+import { insertItem, deleteItem, deleteAllBoughtItems, checkForItem, getItemById, getItems, updateItem } from "./database_interactions/item.js";
 
 async function socketEvents(socket, app, io) {
     //Adds an item to the database.
     socket.on("adding item", async (item) => {
-        const exists = await checkForItem(item);
+        const renderedElements = {};
+        const marketElementId = item.market.toLowerCase().replaceAll(" ", "-");
+        const categoryElementId = item.category.toLowerCase().replaceAll(" ", "-");
+
+        let market = await getMarket(item.market);
+        if (market === undefined) {
+            market = await insertMarket(item.market);
+            renderedElements.market = await renderMarketView({id: marketElementId, name: market.name});
+        }
+
+        let category = await getCategory(item.category, market.id);
+        if (category === undefined) {
+            category = await insertCategory(item.category, market.id);
+            renderedElements.category = await renderCategoryView({id: categoryElementId, name: category.name});
+        } 
+    
+        const exists = await checkForItem(item, category.id, market.id);
         if (exists) {
             console.log("NOT PERMITTED! Trying to add an item with props that are the same as other item!"); 
             return;
@@ -17,35 +32,14 @@ async function socketEvents(socket, app, io) {
             return;
         }
 
-        let elementToAdd = {
-            renderedElement: "",
-            type: 0
-        };
+        item.id = result.lastID;
+        renderedElements.item = await renderItemView(item);
 
-        const market = markets.get(item.market);
-        if (!market) {
-            markets.set(item.market, []);
-
-            elementToAdd.renderedElement = await renderMarketView(item);
-            elementToAdd.type = ElementTypeEnum.Market;
-        }
-
-        if (!market.includes(item.category)) {
-            market.push(item.category);
-
-            elementToAdd.renderedElement = await renderCategoryView(item);
-            elementToAdd.type = ElementTypeEnum.Category;
-        }
-
-        
-
-        item.productId = result.lastID;
-        const itemElement = await renderItemView(item);
         const prices = await updatePrice();
 
-        io.emit("add item", [{itemElement, isBought: false}], prices);
+        io.emit("add item", [{renderedElements, isBought: false, marketElementId, categoryElementId}], prices);
 
-        console.log(`FUNCTION: socketEvents() - EVENT: adding item -- Item with id = ${item.productId} added.`);
+        console.log(`FUNCTION: socketEvents() - EVENT: adding item -- Item with id = ${item.id} added.`);
     });
 
     // Updates isBought to true. 
@@ -53,7 +47,7 @@ async function socketEvents(socket, app, io) {
         const itemBought = await updateItemProps(item, "buy item");
 
         if (itemBought) {
-            console.log(`FUNCTION: socketEvents() - EVENT: buying item -- Item with id = ${item.productId} bought.`);
+            console.log(`FUNCTION: socketEvents() - EVENT: buying item -- Item with id = ${item.id} bought.`);
         }
     });
 
@@ -62,7 +56,7 @@ async function socketEvents(socket, app, io) {
         const itemReturned = await updateItemProps(item, "return item");
 
         if (itemReturned) {
-            console.log(`FUNCTION: socketEvents() - EVENT: returning item -- Item with id = ${item.productId} returned.`);
+            console.log(`FUNCTION: socketEvents() - EVENT: returning item -- Item with id = ${item.id} returned.`);
         }
     });
 
@@ -88,7 +82,7 @@ async function socketEvents(socket, app, io) {
             return;
         }
         
-        const result = await getItemById(item.productId);
+        const result = await getItemById(item.id);
         if (result === undefined) {
             console.log("NOT PERMITTED! Trying to update an item that does not exist!"); 
             return;
@@ -96,7 +90,7 @@ async function socketEvents(socket, app, io) {
 
         const itemUpdated = await updateItemProps(item, "update item");
         if (itemUpdated) {
-            console.log(`FUNCTION: socketEvents() - EVENT: updating item -- Item with id = ${item.productId} updated.`);
+            console.log(`FUNCTION: socketEvents() - EVENT: updating item -- Item with id = ${item.id} updated.`);
         }
     });
 
@@ -121,14 +115,41 @@ async function socketEvents(socket, app, io) {
         const items = await getItems();
         const itemElements = [];
 
-        for (const item of items) {
-            const itemElement = await renderItemView({ productId: item.id, isBought: item.isBought, market: item.market, productName: item.content, quantity: item.quantity, unit: item.unit, price: item.price});
-            itemElements.push({itemElement, isBought: item.isBought});
-        }
+        for (const item of items) {       
+            const marketId = item.market.toLowerCase().replace(" ", "-");
+            const categoryId = item.category.toLowerCase().replace(" ", "-");
+            const renderedElements = await RenderElement(item, marketId, categoryId);
 
+            itemElements.push({renderedElements, isBought: item.isBought, marketId, categoryId});
+        }
+        
 		socket.emit("add item", itemElements, prices);
 	}
     
+    async function RenderElement(item, marketId, categoryId) {
+        let renderedElements = {};
+
+        const market = markets.get(item.market);
+        if (!market) {
+            const marketName = item.market;
+
+            markets.set(marketName, []);
+            renderedElements.market = await renderMarketView({id: marketId, name: marketName});
+        }
+        
+        const categoryExist = market.includes(item.category);
+        if (!categoryExist) {
+            const categoryName = item.category;
+
+            market.push(categoryName);
+            renderedElements.category = await renderCategoryView({id: categoryId, name: categoryName});
+        }
+
+        renderedElements.item = await renderItemView(item);
+
+        return renderedElements;
+    }
+
     /**
      * Updates the given item in the database and then dispaches the event with the given name.
      * @param {object} item The item to be updated.  
@@ -143,7 +164,7 @@ async function socketEvents(socket, app, io) {
 
         const itemElement = await renderItemView(item);
         const prices = await updatePrice();
-        io.emit(callbackEventName, itemElement, item.productId, prices);
+        io.emit(callbackEventName, itemElement, item.id, prices);
         return true;
     };
 
@@ -181,15 +202,31 @@ async function socketEvents(socket, app, io) {
     };  
 
     /**
-     * Used to render items.
-     * @param {object} item 
-     * @returns Returns rendered item.
+     * Used to render markets.
+     * @param {object} market 
+     * @returns Returns rendered market.
      */
-    async function renderItemView(item) {   
-
-        item.market = item.market[0].toUpperCase();
+    async function renderMarketView(market) {   
         return new Promise((resolve, reject) => {
-            app.render('item', {...item}, (err, html) => {
+            app.render('market', {...market}, (err, html) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(html);
+                }
+            });
+        });
+    };
+
+    /**
+     * Used to render categories.
+     * @param {object} category 
+     * @returns Returns rendered category.
+     */
+    async function renderCategoryView(category) {   
+
+        return new Promise((resolve, reject) => {
+            app.render('category', {...category}, (err, html) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -204,10 +241,9 @@ async function socketEvents(socket, app, io) {
      * @param {object} item 
      * @returns Returns rendered item.
      */
-    async function renderCategoryView(category) {   
-
+    async function renderItemView(item) {   
         return new Promise((resolve, reject) => {
-            app.render('category', {...category}, (err, html) => {
+            app.render('item', {...item}, (err, html) => {
                 if (err) {
                     reject(err);
                 } else {

@@ -61,7 +61,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
             if (value === "" || value === "none") {
 
                 // Market and category can be empty. The id is not set by the user.
-                if (key != "market" && key != "category" && key != "productId") {
+                if (key != "market" && key != "category" && key != "id") {
                     alert("There cannot be empty values");
                     return;
                 }
@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
         
         item.isBought = false;
         item.isBeingEdit = false;
-        if (item.productId === "") {
+        if (item.id === "") {
             socket.emit("adding item", item);
         }
         else {
@@ -130,9 +130,9 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
     itemForEdit = (item) => {
         addItemCheckbox.checked = true;
-        productId.value = item.productId;
+        productId.value = item.id;
 
-        productName.value = item.productName;
+        productName.value = item.name;
 
         productQuantity.value = item.quantity;
 

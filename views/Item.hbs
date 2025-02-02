@@ -1,4 +1,4 @@
-<section id="{{productId}}" class="{{#if isBought}} bought-item {{else}} unbought-item  {{/if}}item">
+<section id="{{id}}" class="{{#if isBought}} bought-item {{else}} unbought-item  {{/if}}item">
     {{#unless isBought}}
         <button class="edit-button roboto-flex-500">Edit</button>
     {{/unless}}
@@ -6,7 +6,7 @@
     <div>
         <div class="roboto-flex-500">
             <div class="item-market">{{market}}</div>
-            <h1 class="item-title">{{{productName}}}</h1>
+            <h1 class="item-title">{{{name}}}</h1>
             <span class="item-quantity">{{quantity}} {{unit}}</span>
         </div>      
         <span class="item-price roboto-flex-500">{{price}}</span>

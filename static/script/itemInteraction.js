@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
     socket.on("add item", (elements, prices) => {
         elements.forEach(element => {
-            addItem(element.itemElement, !element.isBought);
+            addElement(element.renderedElements, !element.isBought, element.marketElementId, element.categoryElementId);
         });
         
         updatePrices(prices);
@@ -34,13 +34,13 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
     socket.on("buy item", (element, elementId, prices) => {
         removeItem(elementId);
-        addItem(element, false);
+        addElement(element, false);
         updatePrices(prices);
     });
 
     socket.on("return item", (element, elementId, prices) => {
         removeItem(elementId);
-        addItem(element, true);
+        addElement(element, true);
         updatePrices(prices);
     });
 
@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
     socket.on("update item", (element, elementId, prices) => {
         removeItem(elementId);
-        addItem(element, true);
+        addElement(element, true);
         updatePrices(prices);
     });
 
@@ -103,33 +103,50 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
     /**
      * 
-     * @param {HTMLElement} element 
-     * @param {boolean} isItemToBuy 
+     * @param {HTMLElement} elements 
+     * @param {boolean} placeInToBuy 
      */
-    function addItem(element, isItemToBuy) {
+    function addElement(renderedElements, placeInToBuy, marketId, categoryId) {
         const tempDiv = document.createElement("div");
-        tempDiv.innerHTML = element;
-        const newElement = tempDiv.firstChild;
-        const hammer = new Hammer(newElement);
-        hammerInstances.set(newElement, hammer);
+        tempDiv.innerHTML = renderedElements.item;
+        const newItem = tempDiv.firstChild;
+        const hammer = new Hammer(newItem);
+        hammerInstances.set(newItem, hammer);
 
-        if (isItemToBuy) {
-            unboughtList.appendChild(newElement);
-
-            hammer.on('press', (e) => {
-                itemInteraction.elementHolded = true; 
-                hammer.get('pan').set({ enable: true });
-            });
-            hammer.on('pressup', buyItem);
-
-            hammer.on('panleft', showEditButton);
-            hammer.on('panright', showDeleteButton);
-            hammer.get('pan').set({enable: false});
-        }
-        else {
-            boughtList.appendChild(newElement);
+        if (!placeInToBuy) {
+            boughtList.appendChild(newItem);
             hammer.on('pressup', returnItem);
+
+            return;
         }
+
+        if (renderedElements.market !== undefined) {
+            tempDiv.innerHTML = renderedElements.market;
+            const newMarket = tempDiv.firstChild;
+
+            unboughtList.appendChild(newMarket);
+        }
+
+        if (renderedElements.category !== undefined) {
+            tempDiv.innerHTML = renderedElements.category;
+            const newCategory = tempDiv.firstChild;
+
+            const marketContainer = document.getElementById(`${marketId}-container`);
+            marketContainer.appendChild(newCategory);
+        }
+
+        const categoryContainer = document.getElementById(`${categoryId}-container`);
+        categoryContainer.appendChild(newItem);
+
+        hammer.on('press', (e) => {
+            itemInteraction.elementHolded = true; 
+            hammer.get('pan').set({ enable: true });
+        });
+        hammer.on('pressup', buyItem);
+
+        hammer.on('panleft', showEditButton);
+        hammer.on('panright', showDeleteButton);
+        hammer.get('pan').set({enable: false});
     };
 
     function showDeleteButton(e) {
@@ -252,13 +269,13 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
         const item = {
             market: itemMarket,
-            productName: itemTitle,
+            name: itemTitle,
             quantity: itemQuantity,
             unit: itemUnit,
             price: itemPrice,
             isBought: isBought,
             isBeingEdit: isBeingEdit,
-            productId: itemElement.id
+            id: itemElement.id
         }
 
         return item;
@@ -271,6 +288,8 @@ document.addEventListener("DOMContentLoaded", (e) => {
  */
 function removeItem(itemId) {
     const element = document.getElementById(itemId);
+    const categoryContainer = element.parentElement;
+    const marketContainer = categoryContainer.parentElement.parentElement
     const hammer = hammerInstances.get(element);
     hammerInstances.delete(element);
     hammer.off('press');
@@ -279,4 +298,12 @@ function removeItem(itemId) {
     hammer.off('swiperight');
     hammer.destroy();
     element.remove();
+
+    if (categoryContainer.childElementCount === 0) {
+        categoryContainer.parentElement.remove();
+    }
+
+    if (marketContainer.childElementCount === 0) {
+        marketContainer.parentElement.remove();
+    }
 };
