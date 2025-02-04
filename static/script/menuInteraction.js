@@ -16,6 +16,8 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
     const productQuantity = document.getElementById("quantity");
 
+    const productPrice = document.getElementById("price");
+
     const dropdownMenusCheckbox = document.querySelectorAll("#create-edit-menu input[id$='checkbox']");
     /** * @type {Array<Element>}*/
     const dropdownMenusLabel = [];
@@ -48,6 +50,10 @@ document.addEventListener("DOMContentLoaded", (e) => {
         if (e.target === menuBackground) {
             addItemCheckbox.checked = false;
 
+            if (productId.value !== "") {
+                socket.emit("editing interrupted item", productId.value);
+            }
+
             resetAllElements();
         }
     });
@@ -74,7 +80,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
         resetAllElements();
         
         item.isBought = false;
-        item.isBeingEdit = false;
+        item.isBeingEdited = false;
         if (item.id === "") {
             socket.emit("adding item", item);
         }
@@ -96,12 +102,13 @@ document.addEventListener("DOMContentLoaded", (e) => {
         resetElement(productId, {value: ""});
         resetElement(productName, {value: ""});
         resetElement(productQuantity, {value: ""});
+        resetElement(productPrice, {value: ""});
         dropdownMenusCheckbox.forEach(checkbox => {
             resetElement(checkbox, {checked: false});
         });
-        dropdownMenusLabel.forEach((label, index) => {
-            resetElement(label, {innerHTML: dropdownMenusValues[index].value});
-            label.removeAttribute("style")
+        dropdownMenusLabel.forEach(label => {
+            resetElement(label, {innerHTML: label.dataset.defaultValue});
+            label.removeAttribute("style");
         });
         dropdownMenusValues.forEach(values => {
             resetElement(values[0], {checked: true});
@@ -129,6 +136,8 @@ document.addEventListener("DOMContentLoaded", (e) => {
     }
 
     itemForEdit = (item) => {
+        const radioProps = [item.unit, item.category, item.market];
+
         addItemCheckbox.checked = true;
         productId.value = item.id;
 
@@ -136,30 +145,17 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
         productQuantity.value = item.quantity;
 
-        units.forEach(unit => {
-            if (unit.value === item.unit) {
-                unit.checked = true;
-                unitLabel.innerHTML = item.unit;
-            }
+        dropdownMenusValues.forEach((values, index) => {
+            values.forEach(value => {
+                if (value.value === radioProps[index]) {
+                    value.checked = true;
+                    dropdownMenusLabel[index].innerHTML = radioProps[index];
+                    dropdownMenusLabel[index].style.color = "black";
+                }
+            });
         });
 
         productPrice.value = item.price;
-
-        categories.forEach(category => {
-            if (category.value === item.category) {
-                category.checked = true;
-                categoryLabel.innerHTML = item.category
-                categoryLabel.style.color = "black";
-            }
-        });
-
-        markets.forEach(market => {
-            if (market.value === item.market) {
-                market.checked = true;
-                marketLabel.innerHTML = item.market
-                marketLabel.style.color = "black";
-            }
-        });
     }
 })
 

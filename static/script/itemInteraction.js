@@ -34,13 +34,13 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
     socket.on("buy item", (element, elementId, prices) => {
         removeItem(elementId);
-        addElement(element, false);
+        addElement({item: element}, false);
         updatePrices(prices);
     });
 
     socket.on("return item", (element, elementId, prices) => {
         removeItem(elementId);
-        addElement(element, true);
+        addElement(element.renderedElements, !element.isBought, element.marketElementId, element.categoryElementId);
         updatePrices(prices);
     });
 
@@ -51,8 +51,16 @@ document.addEventListener("DOMContentLoaded", (e) => {
 
     socket.on("update item", (element, elementId, prices) => {
         removeItem(elementId);
-        addElement(element, true);
+        addElement(element.renderedElements, !element.isBought, element.marketElementId, element.categoryElementId);
         updatePrices(prices);
+    });
+
+    socket.on("edit item", (item) => {
+        itemForEdit(item);
+    });
+
+    socket.on("Unpermitted action", (message) => {
+        alert(message)
     });
 
     document.addEventListener('pointerup', (e) => {
@@ -93,8 +101,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
                 }
             }
             else {
-                const item = getItemProps(parent, true);
-                actions[1](item, false, true);
+                socket.emit("editing item", parent.id);
             }
         }
 
@@ -131,11 +138,11 @@ document.addEventListener("DOMContentLoaded", (e) => {
             tempDiv.innerHTML = renderedElements.category;
             const newCategory = tempDiv.firstChild;
 
-            const marketContainer = document.getElementById(`${marketId}-container`);
+            const marketContainer = document.querySelector(`#market-container-${marketId}`);
             marketContainer.appendChild(newCategory);
         }
 
-        const categoryContainer = document.getElementById(`${categoryId}-container`);
+        const categoryContainer = document.querySelector(`#category-container-${categoryId}`);
         categoryContainer.appendChild(newItem);
 
         hammer.on('press', (e) => {
@@ -237,73 +244,76 @@ document.addEventListener("DOMContentLoaded", (e) => {
             }
         }
 
-        const item = getItemProps(element, true);
-
-        socket.emit("buying item", item);
+        socket.emit("buying item", element.id);
         isHolding = false;
     };
 
     function returnItem(e) {
         const element = e.target;
-        const item = getItemProps(element, false);
-
-        socket.emit("returning item", item);
-    };
-
-    /**
-     * Returns an object with all of the relevent props of the element.
-     * @param {HTMLElement} itemElement The element from which the props are taken.
-     * @param {boolean} isBought
-     * @param {boolean} isBeingEdit 
-     * @returns {object} 
-     */
-    function getItemProps(itemElement, isBought, isBeingEdit = false) {
-        const level = isBought === true ? 1 : 0;
-
-        const itemMarket = itemElement.children[level].children[0].children[0].innerHTML;
-        const itemTitle = itemElement.children[level].children[0].children[1].innerHTML;
-        const itemQuantityAndUnit = itemElement.children[level].children[0].children[2].innerHTML.split(" ");
-        const itemQuantity = itemQuantityAndUnit[0];
-        const itemUnit = itemQuantityAndUnit[1];
-        const itemPrice = itemElement.children[level].children[1].innerHTML;
-
-        const item = {
-            market: itemMarket,
-            name: itemTitle,
-            quantity: itemQuantity,
-            unit: itemUnit,
-            price: itemPrice,
-            isBought: isBought,
-            isBeingEdit: isBeingEdit,
-            id: itemElement.id
-        }
-
-        return item;
+        socket.emit("returning item", element.id);
     };
 });
 
 /**
- * Removes an element from the DOM.
+ * 
+ * @param {HTMLElement} item 
+ */
+function findMarketContainer(item) {
+    let parent = item.parentElement;
+
+    while (!parent.classList.contains("market-container")) {
+        parent = parent.parentElement;
+    }
+
+    return parent;
+}
+
+/**
+ * 
+ * @param {HTMLElement} item 
+ */
+function findCategoryContainer(item) {
+    let parent = item.parentElement;
+
+    while (!parent.classList.contains("category-container")) {
+        parent = parent.parentElement;
+    }
+
+    return parent;
+}
+
+/**
+ * Removes an item from the DOM.
  * @param {string} itemId The id of the element.
  */
 function removeItem(itemId) {
     const element = document.getElementById(itemId);
-    const categoryContainer = element.parentElement;
-    const marketContainer = categoryContainer.parentElement.parentElement
     const hammer = hammerInstances.get(element);
     hammerInstances.delete(element);
-    hammer.off('press');
-    hammer.off('pressup');
-    hammer.off('swipeleft');
-    hammer.off('swiperight');
-    hammer.destroy();
-    element.remove();
 
-    if (categoryContainer.childElementCount === 0) {
-        categoryContainer.parentElement.remove();
+    if (element.classList.contains("unbought-item")) {
+        const marketContainerElement = findMarketContainer(element);
+        const categoryContainerElement = findCategoryContainer(element);
+
+        hammer.off('press');
+        hammer.off('pressup');
+        hammer.off('swipeleft');
+        hammer.off('swiperight');
+        hammer.off('pan');
+        hammer.destroy();
+        element.remove();
+
+        if (categoryContainerElement.childElementCount === 0) {
+            categoryContainerElement.parentElement.remove();
+        }
+    
+        if (marketContainerElement.childElementCount === 0) {
+            marketContainerElement.parentElement.remove();
+        }
     }
-
-    if (marketContainer.childElementCount === 0) {
-        marketContainer.parentElement.remove();
+    else {
+        hammer.off('pressup');
+        hammer.destroy();
+        element.remove();
     }
 };

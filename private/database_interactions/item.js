@@ -7,7 +7,7 @@ import db from "./db.js"
  */
 async function insertItem(item, categoryId) {
     try {           
-        const result = await db.run("INSERT INTO item (isBought, name, quantity, unit, price, categoryId) VALUES (?, ?, ?, ?, ?, ?)", [item.isBought, item.name, item.quantity, item.unit, item.price, categoryId]);
+        const result = await db.run("INSERT INTO item (isBought, name, quantity, unit, price, categoryId, isBeingEdited) VALUES (?, ?, ?, ?, ?, ?, ?)", [item.isBought, item.name, item.quantity, item.unit, item.price, categoryId, false]);
         return result;
     } catch (e) {
         console.error("ERROR while trying to insert the new item. Error: ", e);
@@ -53,6 +53,19 @@ async function deleteAllBoughtItems() {
 }
 
 /**
+ * Returns all item that are bought.
+ * @returns Returns array of the found items. If no item is found, returns empty array.
+ */
+async function getAllBoughtItems() {
+    try {
+        const result = await db.all("SELECT i.id, i.name, i.isBought, i.quantity, i.unit, i.price, c.name AS category, m.name AS market FROM item AS i LEFT JOIN category AS c ON i.categoryId = c.id LEFT JOIN market AS m ON c.marketId = m.id WHERE isBought = ?", [true]);
+        return result;
+    } catch (e) {
+        console.error(`ERROR while trying to remove every item with isBought = true. Error: `, e);
+    }
+}
+
+/**
  * Gets and returns item that matches the given id.
  * @param {*} itemId The id of the item that is to be retreved.
  * @returns Returns the item if it exist. Otherwise returns undefined.
@@ -72,10 +85,24 @@ async function getItemById(itemId) {
  */
 async function getItems() {
     try {
-        const result = await db.all("SELECT i.id, i.name, i.isBought, i.quantity, i.unit, i.price, c.name AS category, m.name AS market FROM item AS i INNER JOIN category AS c ON i.categoryId = c.id INNER JOIN market AS m ON c.marketId = m.id");
+        const result = await db.all("SELECT i.id, i.name, i.isBought, i.quantity, i.unit, i.price, c.name AS category, m.name AS market FROM item AS i LEFT JOIN category AS c ON i.categoryId = c.id LEFT JOIN market AS m ON c.marketId = m.id");
         return result;
     } catch (e) {
         console.error("ERROR updating prices. Error: ", e);
+    }
+}
+
+/**
+ * Gets and returns item that matches the given id.
+ * @param {*} categoryId The id of the category that the item belongs to.
+ * @returns Returns all items that are in this category. Otherwise returns empty array.
+ */
+async function getItemsByCategoryId(categoryId) {
+    try {
+        const result = await db.all("SELECT * FROM item WHERE categoryId = ?", [categoryId]);
+        return result;
+    } catch (e) {
+        console.error(`ERROR while trying to select the items with categoryId = ${categoryId}. Error: `, e);
     }
 }
 
@@ -86,7 +113,7 @@ async function getItems() {
  */
 async function updateItem(item) {
     try {
-        const result = await db.run("UPDATE item SET isBought = ?, market = ?, name = ?, quantity = ?, unit = ?, price = ?, isBeingEdit = ?, category = ? where id = ?", [item.isBought, item.market, item.name, item.quantity, item.unit, item.price, item.isBeingEdit, item.category, item.id]);
+        const result = await db.run("UPDATE item SET isBought = ?, name = ?, quantity = ?, unit = ?, price = ?, isBeingEdited = ?, categoryId = ? where id = ?", [item.isBought, item.name, item.quantity, item.unit, item.price, item.isBeingEdited, item.categoryId, item.id]);
         
         if (result.changes === 0) {
             return false;
@@ -117,4 +144,4 @@ async function checkForItem(item, categoryId, marketId) {
     }
 }
 
-export { insertItem, deleteItem, deleteAllBoughtItems, checkForItem, getItemById, getItems, updateItem };
+export { insertItem, deleteItem, deleteAllBoughtItems, checkForItem, getAllBoughtItems, getItemById, getItemsByCategoryId, getItems, updateItem };

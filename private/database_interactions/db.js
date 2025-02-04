@@ -16,7 +16,7 @@ await db.exec(`
         quantity INTEGER NOT NULL CHECK (quantity > -1),
         unit TEXT NOT NULL,
         price INTEGER DEFAULT 0,
-        isBeingEdit INTEGER DEFAULT 0,
+        isBeingEdited INTEGER DEFAULT 0,
         categoryId INTEGER REFERENCES category (id)
     );
 
