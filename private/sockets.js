@@ -1,36 +1,39 @@
-import { insertMarket, deleteMarket, getMarketByName, getMarketById, isMarketUsed, isMarketEmpty } from "./database_interactions/market.js";
-import { insertCategory, deleteCategory, getCategoryByName, getCategoryById, getCategoriesByMarket, isCategoryUsed, isCategoryEmpty } from "./database_interactions/category.js";
-import { insertItem, deleteItem, deleteAllBoughtItems, checkForItem, getAllBoughtItems, getItemById, getItems, getItemsByCategoryId, updateItem } from "./database_interactions/item.js";
+import { Market } from "./database_interactions/market.js";
+import { Category } from "./database_interactions/category.js";
+import { Item } from "./database_interactions/item.js";
 
 async function socketEvents(socket, app, io) {
     //Adds an item to the database.
     socket.on("adding item", async (item) => {
-        const renderedElements = {};
-
-        const itemDetails = await getMarketAndCategoryByName(item.market, item.category, true);
-        if (!itemDetails.hadMarket) {
-            renderedElements.market = await renderMarketView(itemDetails.market);
+        // Getting the market and the category of the item.
+        const itemDetails = await getSectionsByName(item, true);
+        if (itemDetails.category === undefined || itemDetails.market === undefined) {
+            return;
         }
 
-        if (!itemDetails.hadCategory) {
-            renderedElements.category = await renderCategoryView(itemDetails.category);
-        }
-
-        const exists = await checkForItem(item, itemDetails.category.id, itemDetails.market.id);
+        // Checking if the item exists.
+        item.categoryId = itemDetails.category.id;
+        item.marketId = itemDetails.market.id;
+        const exists = await Item.exists(item);
         if (exists) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to add an item with props that are the same as other item!");
             return;
         }
 
-        const result = await insertItem(item, itemDetails.category.id);
+        // Inserting the item.
+        const result = await Item.insert(item);
         if (result === undefined) {
             return;
         }
 
+        // Rendering the category and the market if they are not rendered already. Rendering the item.
         item.id = result.lastID;
-        item.market = itemDetails.market.name;
-        renderedElements.item = await renderItemView(item);
+        itemDetails.renderMarket = !itemDetails.hadMarket;
+        itemDetails.renderCategory = !itemDetails.hadCategory;
+        const renderedElements = await renderItemDetails(itemDetails);
+        renderedElements.item = await renderView("item", item);
 
+        // Calculate the prices.
         const prices = await updatePrice();
 
         io.emit("add item", [{renderedElements, isBought: false, marketElementId: itemDetails.market.id, categoryElementId: itemDetails.category.id}], prices);
@@ -40,29 +43,39 @@ async function socketEvents(socket, app, io) {
 
     // Updates isBought to true. 
     socket.on("buying item", async (itemId) => {
-        const item = await getItemById(itemId);
+        // Getting the item from the database.
+        const item = await Item.getById(itemId);
         if (item === undefined) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to buy an item that does not exist!");
             return;
         }
 
-        const itemDetails = await getMarketAndCategoryById(item.categoryId);
+        // Checking if someone is updating this item.
+        if (item.isBeingEdited == true) {
+            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to buy an item while another user is updating it!");
+            return;
+        }
+
+        // Getting the category and the market of the item.
+        const itemDetails = await getSectionsById(item);
         if (itemDetails.category === undefined || itemDetails.market === undefined) {
             return;
         }
 
+        // Updeting the item bought status to show that the item is bought.
         item.isBought = true;
-
-        const isSuccessful = await updateItem(item);
+        const isSuccessful = await Item.update(item);
         if (!isSuccessful) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
+        // Rendering the item 
         item.market = itemDetails.market.name;
         item.category = itemDetails.category.name;
-
-        const itemElement = await renderItemView(item);
+        const itemElement = await renderView("item", item);
+        
+        // Calculate the prices.
         const prices = await updatePrice();
 
         io.emit("buy item", itemElement, item.id, prices)
@@ -72,37 +85,40 @@ async function socketEvents(socket, app, io) {
 
     // Updates isBought to false. 
     socket.on("returning item", async (itemId) => {
-        const renderedElements = {};
-
-        const item = await getItemById(itemId);
+        // Getting the item from the database.
+        const item = await Item.getById(itemId);
         if (item === undefined) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to return an item that does not exist!");
             return;
         }
 
-        const itemDetails = await getMarketAndCategoryById(item.categoryId, true);
-        
-        const isCategoryInUse = await isCategoryUsed(itemDetails.category.id);
-        if (!isCategoryInUse) {
-            renderedElements.category = await renderCategoryView(itemDetails.category);
-        }
-        
-        const isMarketInUse = await isMarketUsed(itemDetails.market.id);
-        if (!isMarketInUse) {
-            renderedElements.market = await renderMarketView(itemDetails.market);
+        // Getting the category and the market of the item.
+        const itemDetails = await getSectionsById(item);
+        if (itemDetails.category === undefined || itemDetails.market === undefined) {
+            return;
         }
 
+        // Checking if the category and the market are used meaning are there any unbought items in them. If there are, they are rendered and we should not render them again.
+        const isMarketInUse = await Market.isUsed(itemDetails.market.id);
+        const isCategoryInUse = await Category.isUsed(itemDetails.category.id);
+
+        // Updeting the item bought status to show that the item is not bought.
         item.isBought = false;
-        const isSuccessful = await updateItem(item)
+        const isSuccessful = await Item.update(item)
         if (!isSuccessful) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
-        
+
+        // Rendering the category and the market if they are not rendered already. Rendering the item.
+        itemDetails.renderMarket = !isMarketInUse;
+        itemDetails.renderCategory = !isCategoryInUse;
         item.market = itemDetails.market.name;
         item.category = itemDetails.category.name;
-        renderedElements.item = await renderItemView(item);
-
+        const renderedElements = await renderItemDetails(itemDetails);
+        renderedElements.item = await renderView("item", item);
+        
+        // Calculate the prices.
         const prices = await updatePrice();
         io.emit("return item", {renderedElements, isBought:  item.isBought, marketElementId: itemDetails.market.id, categoryElementId: itemDetails.category.id}, itemId, prices);
 
@@ -111,40 +127,37 @@ async function socketEvents(socket, app, io) {
 
     // Deletes the item from the database. 
     socket.on("deleting item", async (itemId) => {
-        const item = await getItemById(itemId);
+        // Getting the item from the database.
+        const item = await Item.getById(itemId);
         if (item === undefined) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to delete an item that does not exist!");
             return;
         }
 
-        const itemDetails = await getMarketAndCategoryById(item.categoryId);
+        // Checking fi someone is editing the item.
+        if (item.isBeingEdited == true) {
+            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to delete an item that is being edited by another user!");
+            return;
+        }
 
-        const isSuccessful = await deleteItem(itemId);
+        // Getting the category and the market of the item.
+        const itemDetails = await getSectionsById(item);
+        if (itemDetails.category === undefined || itemDetails.market === undefined) {
+            return;
+        }
+
+        // Delete the item.
+        const isSuccessful = await Item.delete(itemId);
         if (!isSuccessful) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to delete an item that does not exist!");
             return;
         }
 
-        const shouldDeleteCategory = await isCategoryEmpty(itemDetails.category.id);
+        // Deliting the category and market of the old item if they are empty.
+        await deleteSectionsIfEmpty(itemDetails.market.id, itemDetails.category.id);
 
-        if (shouldDeleteCategory) {
-            const isCategoryDeleted = await deleteCategory(itemDetails.category.id);
-
-            if (!isCategoryDeleted) {
-                return;
-            }
-
-            const shouldDeleteMarket = await isMarketEmpty(itemDetails.market.id);
-
-            if (shouldDeleteMarket) {
-                const isMarketDeleted = await deleteMarket(itemDetails.market.id);
-
-                if (!isMarketDeleted) {
-                    return;
-                }
-            }
-        }
-
+        
+        // Calculate the prices.
         const prices = await updatePrice();
         io.emit("delete item", itemId, prices);
 
@@ -153,19 +166,31 @@ async function socketEvents(socket, app, io) {
 
     // Updates the props of the item.
     socket.on("updating item", async (item) => {
-        const result = await getItemById(item.id);
-        if (result === undefined) {
+        // Getting the item from the database.
+        const foundItem = await Item.getById(item.id);
+        if (foundItem === undefined) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
-        const itemDetails = await getMarketAndCategoryByName(item.market, item.category, true);
 
-        const exists = await checkForItem(item, itemDetails.category.id, itemDetails.market.id);
+        // Getting the category and the market of the item.
+        const itemDetails = await getSectionsByName(item, true);
+        if (itemDetails.category === undefined || itemDetails.market === undefined) {
+            return;
+        }
+
+        // Checking if the item exists.
+        item.categoryId = itemDetails.category.id;
+        item.marketId = itemDetails.market.id;
+        const exists = await Item.exists(item);
+
+        // If it does that means that there is another item that have the same name quantity and unit as well as being in the same category and market.
         if (exists) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item with props that are the same as other item!");
 
-            result.isBeingEdited = false;
-            const isSuccessful = await updateItem(result);
+            // Update the editing status to show that the item is not edited anymore.
+            foundItem.isBeingEdited = false;
+            const isSuccessful = await Item.update(foundItem);
             if (!isSuccessful) {
                 socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
                 return;
@@ -173,75 +198,64 @@ async function socketEvents(socket, app, io) {
             return;
         }
 
-        
-        item.categoryId = itemDetails.category.id;
-        const isSuccessful = await updateItem(item);
+        // Update the item.
+        const isSuccessful = await Item.update(item);
         if (!isSuccessful) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
-        const oldItemDetalis = await getMarketAndCategoryById(result.categoryId);
+        // Getting the category and market of the old item do that we can delete them if thay are empty.
+        const oldItemDetalis = await getSectionsById(foundItem);
 
-        const shouldDeleteCategory = await isCategoryEmpty(oldItemDetalis.category.id);
+        // Deliting the category and market of the old item if they are empty.
+        await deleteSectionsIfEmpty(oldItemDetalis.market.id, oldItemDetalis.category.id);
 
-        if (shouldDeleteCategory) {
-            const isCategoryDeleted = await deleteCategory(oldItemDetalis.category.id);
+        // Checking if the category and the market are used meaning are there any unbought items in them. If there are, they are rendered and we should not render them again.
+        const isMarketInUse = await Market.isUsed(itemDetails.market.id, item.id);
+        const isCategoryInUse = await Category.isUsed(itemDetails.category.id, item.id);
 
-            if (!isCategoryDeleted) {
-                return;
-            }
-
-            const shouldDeleteMarket = await isMarketEmpty(oldItemDetalis.market.id);
-
-            if (shouldDeleteMarket) {
-                const isMarketDeleted = await deleteMarket(oldItemDetalis.market.id);
-
-                if (!isMarketDeleted) {
-                    return;
-                }
-            }
-        }
-
-        const renderedElements = {}
-
-        const isMarketInUse = await isMarketUsed(itemDetails.market.id, item.id);
-        const isCategoryInUse = await isCategoryUsed(itemDetails.category.id, item.id);
-        if (!isMarketInUse) {
-            renderedElements.market = await renderMarketView(itemDetails.market);
-        }
+        // Rendering the category and the market if they are not rendered already. Rendering the item.
+        itemDetails.renderMarket = !isMarketInUse;
+        itemDetails.renderCategory = !isCategoryInUse;
+        const renderedElements = await renderItemDetails(itemDetails);
+        renderedElements.item = await renderView("item", item);
         
-        if (!isCategoryInUse) {
-            renderedElements.category = await renderCategoryView(itemDetails.category);
-        }
-
-        renderedElements.item = await renderItemView(item);
+        // Calculate the prices.
         const prices = await updatePrice();
 
         io.emit("update item", {renderedElements, isBought:  item.isBought, marketElementId: itemDetails.market.id, categoryElementId: itemDetails.category.id}, item.id, prices)
         console.log(`FUNCTION: socketEvents() - EVENT: updating item -- Item with id = ${item.id} updated.`);
     });
 
+
     socket.on("editing item", async (itemId) => {
-        const item = await getItemById(itemId);
+        // Getting the item from the database.
+        const item = await Item.getById(itemId);
         if (item === undefined) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
+        // Checking fi someone is editing the item.
         if (item.isBeingEdited == true) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item while another user is updating it!");
             return;
         }
 
+        // Update the editing status to show that the item is being edited.
         item.isBeingEdited = true;
-        const isSuccessful = await updateItem(item);
+        const isSuccessful = await Item.update(item);
         if (!isSuccessful) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
-        const itemDetails = await getMarketAndCategoryById(item.categoryId);
+        // Getting the category and the market of the item.
+        const itemDetails = await getSectionsById(item);
+        if (itemDetails.category === undefined || itemDetails.market === undefined) {
+            return;
+        }
 
         item.market = itemDetails.market.name;
         item.category = itemDetails.category.name;
@@ -251,19 +265,22 @@ async function socketEvents(socket, app, io) {
     });
 
     socket.on("editing interrupted item", async (itemId) => {
-        const item = await getItemById(itemId);
+        // Getting the item from the database.
+        const item = await Item.getById(itemId);
         if (item === undefined) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
+        // Checking fi someone is editing the item.
         if (item.isBeingEdited == false) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to inpterrupt the updating without starting to update in first place!");
             return;
         }
 
+        // Update the editing status to show that the item is not edited anymore.
         item.isBeingEdited = false;
-        const isSuccessful = await updateItem(item);
+        const isSuccessful = await Item.update(item);
         if (!isSuccessful) {
             socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
@@ -274,37 +291,27 @@ async function socketEvents(socket, app, io) {
 
     // Deletes all bought items.
     socket.on("clearing bought list", async () => {
-        const boughtItems = await getAllBoughtItems();
+        // Getting all bought items.
+        const boughtItems = await Item.getAllBoughtItems();
 
         for (let i = 0; i < boughtItems.length; i++) {
             const item = boughtItems[i];
-            const itemDetails = await getMarketAndCategoryByName(item.market, item.category);
 
-            const isSuccessful = await deleteItem(item.id);
+            // Getting the category and the market of the item.
+            const itemDetails = await getSectionsById(item);
+            if (itemDetails.category === undefined || itemDetails.market === undefined) {
+                return;
+            }
+
+            // Delete the item.
+            const isSuccessful = await Item.delete(item.id);
             if (!isSuccessful) {
                 socket.emit("Unpermitted action", "NOT PERMITTED! Trying to delete an item that does not exist!");
                 return;
             }
-
-            const shouldDeleteCategory = await isCategoryEmpty(itemDetails.category.id);
-
-            if (shouldDeleteCategory) {
-                const isCategoryDeleted = await deleteCategory(itemDetails.category.id);
-
-                if (!isCategoryDeleted) {
-                    return;
-                }
-
-                const shouldDeleteMarket = await isMarketEmpty(itemDetails.market.id);
-
-                if (shouldDeleteMarket) {
-                    const isMarketDeleted = await deleteMarket(itemDetails.market.id);
-
-                    if (!isMarketDeleted) {
-                        return;
-                    }
-                }
-            }
+      
+            // Deliting the category and market of the old item if they are empty.
+            await deleteSectionsIfEmpty(itemDetails.market.id, itemDetails.category.id);
         }
 
         io.emit("clear bought list");
@@ -313,54 +320,73 @@ async function socketEvents(socket, app, io) {
     
     if (!socket.recovered) {
         socket.emit("reconnect");
-        const items = await getItems();
 
-        const prices = await updatePrice(items);
+        // Getting all items.
+        const items = await Item.getAll();
+
+        // Array that contains an object for each renderedElement and a bool showing if the item is bought or not. 
         const itemElements = [];
 
+        // Map in which are saved all markets and there catrgories that have been created.
         const createdCombinations = new Map();
+
         for (const item of items) { 
             const renderedElements = {};   
 
+            // If the item is bought, render it and continue because items that are bought do not have visual representation of there category and market.
             if (item.isBought) {
-                renderedElements.item = await renderItemView(item);
+                renderedElements.item = await renderView("item", item);
                 itemElements.push({renderedElements, isBought: item.isBought});
                 continue;
             }
 
-            const itemDetails = await getMarketAndCategoryByName(item.market, item.category);
-            if (!itemDetails.category || !itemDetails.market) {
+            // Getting the category and the market of the item.
+            const itemDetails = await getSectionsByName(item);
+            if (itemDetails.category === undefined || itemDetails.market === undefined) {
                 return;
             }
 
+            // Check if the market is rendered already.
             if (!createdCombinations.has(itemDetails.market.id)) {
                 createdCombinations.set(itemDetails.market.id, []);
-                renderedElements.market = await renderMarketView(itemDetails.market);
+                renderedElements.market = await renderView("market", itemDetails.market);
             }
+
+            // Check if the category is rendered already.
             const market = createdCombinations.get(itemDetails.market.id)
-            
             if (!market.includes(itemDetails.category.id)) {
                 market.push(itemDetails.category.id);
-                renderedElements.category = await renderCategoryView(itemDetails.category);
+                renderedElements.category = await renderView("category", itemDetails.category);
             }
             
+            // Render the item.
             item.market = itemDetails.market.name;
-            renderedElements.item = await renderItemView(item);
+            renderedElements.item = await renderView("item", item);
 
             itemElements.push({renderedElements, isBought: item.isBought, marketElementId: itemDetails.market.id, categoryElementId: itemDetails.category.id});
         }
         
+        // Calculate the prices.
+        const prices = await updatePrice(items);
 		socket.emit("add item", itemElements, prices);
 	}
 
-    async function getMarketAndCategoryByName(marketName, categoryName, createIfNotExists = false) {
+    /**
+     * Returns the category and the market that the item is in using the categoryName and the marketName.
+     * @param {object} item The item of which we want to find the category and the market.
+     * @param {boolean} [createIfNotExists] Optional - if its true and the category or the market are not found, thay will be created.
+     * @returns {Promise<object>} An object containing hadMarket and had category that are showing if they were found or if they are created by this method. Category and market contain the found or created category and market.
+     */
+    async function getSectionsByName(item, createIfNotExists = false) {
+        const marketName = item.market;
+        const categoryName = item.category;
         const result = {};
 
-        let market = await getMarketByName(marketName);
+        let market = await Market.getByName(marketName);
 
         if (market === undefined) {
             if (createIfNotExists) {
-                market = await insertMarket(marketName);
+                market = await Market.insert(marketName);
                 result.hadMarket = false;
             }
             else {
@@ -373,10 +399,10 @@ async function socketEvents(socket, app, io) {
             }
         }
 
-        let category = await getCategoryByName(categoryName, market.id);
+        let category = await Category.getByName(categoryName, market.id);
         if (category === undefined) {
             if (createIfNotExists) {
-                category = await insertCategory(categoryName, market.id);
+                category = await Category.insert(categoryName, market.id);
                 result.hadCategory = false;
             }
             else {
@@ -395,15 +421,44 @@ async function socketEvents(socket, app, io) {
         return result;
     }
 
-    async function getMarketAndCategoryById(categoryId) {
+    /**
+     * Deletes the specified category and market if there are no items in them.
+     * @param {number | string} marketId The id of the market tht we want to check. 
+     * @param {number | string} categoryId The id of the category tht we want to check. 
+     */
+    async function deleteSectionsIfEmpty(marketId, categoryId) {
+        const shouldDeleteCategory = await Category.isEmpty(categoryId);
+
+        if (shouldDeleteCategory) {
+            const isCategoryDeleted = await Category.delete(categoryId);
+            if (!isCategoryDeleted) {
+                return;
+            }
+
+            const shouldDeleteMarket = await Market.isEmpty(marketId);
+            if (shouldDeleteMarket) {
+                const isMarketDeleted = await Market.delete(marketId);
+                if (!isMarketDeleted) {
+                    return;
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns the category and the market that the item is in using the categoryId.
+     * @param {object} item The item of which we want to find the category and the market.
+     * @returns {Promise<object>} An object contaning the category and the market of the item.
+     */
+    async function getSectionsById(item) {
         const result = {};
 
-        let category = await getCategoryById(categoryId);
+        let category = await Category.getById(item.categoryId);
         if (category === undefined) {
             return result;
         }
 
-        let market = await getMarketById(category.marketId);
+        let market = await Market.getById(category.marketId);
         if (market === undefined) {
             return result;
         }
@@ -414,9 +469,29 @@ async function socketEvents(socket, app, io) {
         return result;
     }
 
+
+    /**
+     * Renders the given category and market
+     * @param {object} itemDetails Must contain props named renderMarket and renderCategory that show if they should be rendered as well as props market and category that contain the info that should be render for each of them. 
+     * @returns {Promise<object>} An object that contains the rendered market and category.
+     */
+    async function renderItemDetails(itemDetails) {
+        const renderedElements = {};
+    
+        if (itemDetails.renderMarket) {
+            renderedElements.market = await renderView("market", itemDetails.market);
+        }
+    
+        if (itemDetails.renderCategory) {
+            renderedElements.category = await renderView("category", itemDetails.category);
+        }
+
+        return renderedElements;
+    }
+
     /**
      * Selects all items form the database and calculates the prices for each isBought value and the total price.
-     * @returns {object} Returns the an object containing the price of the bought items, the price of the unbought items and the total price.
+     * @returns {Promise<object>} Returns the an object containing the price of the bought items, the price of the unbought items and the total price.
      */
     async function updatePrice(items) {
         let boughtPrice = 0;
@@ -424,7 +499,7 @@ async function socketEvents(socket, app, io) {
         let totalPrice = 0; 
 
         if (items === undefined) {
-            items = await getItems();  
+            items = await Item.getAll();  
         }
 
         for (const item of items) {
@@ -445,48 +520,18 @@ async function socketEvents(socket, app, io) {
     };  
 
     /**
-     * Used to render markets.
-     * @param {object} market 
-     * @returns Returns rendered market.
+     * Used to render segments.
+     * @param {string} name The name ot the view that is to be renedered.
+     * @param {object} content The content that is to be rendered.
+     * @returns {Promise<string>} Returns rendered content.
      */
-    async function renderMarketView(market) {   
+    async function renderView(name, content) {  
+        if ( content.market) {
+            content.market = content.market[0].toUpperCase(); 
+        }
+        
         return new Promise((resolve, reject) => {
-            app.render('market', {...market}, (err, html) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(html);
-                }
-            });
-        });
-    };
-
-    /**
-     * Used to render categories.
-     * @param {object} category 
-     * @returns Returns rendered category.
-     */
-    async function renderCategoryView(category) {   
-        return new Promise((resolve, reject) => {
-            app.render('category', {...category}, (err, html) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(html);
-                }
-            });
-        });
-    };
-
-    /**
-     * Used to render items.
-     * @param {object} item 
-     * @returns Returns rendered item.
-     */
-    async function renderItemView(item) {  
-        item.market = item.market[0].toUpperCase(); 
-        return new Promise((resolve, reject) => {
-            app.render('item', {...item}, (err, html) => {
+            app.render(name, {...content}, (err, html) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -496,4 +541,5 @@ async function socketEvents(socket, app, io) {
         });
     };
 }
+
 export default socketEvents;
