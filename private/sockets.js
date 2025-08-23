@@ -298,7 +298,7 @@ async function socketEvents(socket, app, io) {
             const item = boughtItems[i];
 
             // Getting the category and the market of the item.
-            const itemDetails = await getSectionsById(item);
+            const itemDetails = await getSectionsByName(item);
             if (itemDetails.category === undefined || itemDetails.market === undefined) {
                 return;
             }
