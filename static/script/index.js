@@ -2,6 +2,14 @@ const socket = io();
 
 let updatePrices;
 document.addEventListener("DOMContentLoaded", () => {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(reg => console.log('SW registered', reg))
+          .catch(err => console.error('SW failed', err));
+      });
+    }
+
     const boughtPrice = document.getElementById("bought-price");
     const unboughtPrice = document.getElementById("unbought-price");
     const totalPrice = document.getElementById("total-price");
