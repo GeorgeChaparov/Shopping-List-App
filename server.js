@@ -20,11 +20,11 @@ const hbs = create({
 
 app.engine('hbs', hbs.engine);
 app.set('view engine', 'hbs');
-app.set('views', './views');
+app.set('views', join(__dirname, 'views'));
 
 app.use(express.static(join(__dirname, "static")));
 
-const itemPartialHtml = fs.readFileSync("./views/Item.hbs", "utf8");
+const itemPartialHtml = fs.readFileSync(join(__dirname, "views/item.hbs"), "utf8");
 Handlebars.registerPartial("item", itemPartialHtml);
 
 app.get('/', (req, res) => {
@@ -35,6 +35,7 @@ io.on("connection", async (socket) => {
     socketEvents(socket, app, io);
 });
 
-server.listen(3000, () => {
-	console.log("server running");
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`server running on port ${PORT}`);
 });
