@@ -554,7 +554,7 @@ input[type="number"] {
     margin-top: 10px 0 30px 0;
 }
 
-#itmes-section {
+#items-section {
     width: 100%;
     height: fit-content;
     max-height: calc(100vh - 300px);
@@ -602,7 +602,7 @@ input[type="number"] {
     justify-content: center;
     align-items: center;
 
-    background-image: url(https://cdn.glitch.global/06d7a800-92c9-4fcb-ac42-54885294e8be/shopping-app-line.png?v=1718270891080);
+    background-image: url("/shopping-app-line.png");
     background-position: center;
     background-repeat: repeat-x;
 
@@ -664,7 +664,7 @@ input[type="number"] {
 
     cursor: pointer;
 
-    
+    background-color: transparent;
     margin: 20px 3% 0 0;
 }
 
@@ -682,7 +682,7 @@ input[type="number"] {
     align-items: center;
 
     width: 78%;
-    background-image: url("https://cdn.glitch.global/06d7a800-92c9-4fcb-ac42-54885294e8be/shopping-app-line.png?v=1718270891080");
+    background-image: url("/shopping-app-line.png");
     background-position: center;
     background-repeat: repeat-x;
 

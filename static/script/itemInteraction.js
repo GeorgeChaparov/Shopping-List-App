@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", (e) => {
         itemForEdit(item);
     });
 
-    socket.on("Unpermitted action", (message) => {
+    socket.on("Denied action", (message) => {
         alert(message)
     });
 

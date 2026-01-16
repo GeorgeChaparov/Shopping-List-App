@@ -8,7 +8,7 @@ export class Category extends BaseModel {
      * Insert the given category in the database.
      * @param {string} name The name of the category that is to be inserted.
      * @param {number | string} marketId The id of the market that is linked to this category.
-     * @returns {Promise<object>} The result of the oparation. If no category was added, returns undefined.
+     * @returns {Promise<object>} The result of the operation. If no category was added, returns undefined.
      */
     static async insert(name, marketId) {
         try {
@@ -21,7 +21,7 @@ export class Category extends BaseModel {
 
     /**
      * Gets and returns category that matches the given name.
-     * @param {string} name The name of the category that is to be retreved.
+     * @param {string} name The name of the category that is to be retrieved.
      * @param {number | string} marketId The id of the market that is linked to this category.
      * @returns {Promise<object>} Returns the category. Otherwise returns undefined.
      */

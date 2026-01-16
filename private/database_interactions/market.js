@@ -7,7 +7,7 @@ export class Market extends BaseModel {
     /**
      * Insert the given market in the database.
      * @param {string} marketName The name of the market that is to be inserted. 
-     * @returns {Promise<object>} The result of the oparation. If no market was added, returns undefined.
+     * @returns {Promise<object>} The result of the operation. If no market was added, returns undefined.
      */
     static async insert(marketName) {
         try {
@@ -21,7 +21,7 @@ export class Market extends BaseModel {
     
     /**
      * Gets and returns the market that matches the given name.
-     * @param {string} name The name of the market that is to be retreved.
+     * @param {string} name The name of the market that is to be retrieved.
      * @returns {Promise<object>} Returns the market if exists. Otherwise returns undefined.
      */
     static async getByName(name) {

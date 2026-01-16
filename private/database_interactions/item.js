@@ -7,7 +7,7 @@ export class Item extends BaseModel {
     /**
      * Insert the given item in the database.
      * @param {object} item The item that is to be inserted. 
-     * @returns {Promise<object>} The added item of the oparation. If no item was added, returns undefined.
+     * @returns {Promise<object>} The added item of the operation. If no item was added, returns undefined.
      */
     static async insert(item) {
         try {          
@@ -70,7 +70,7 @@ export class Item extends BaseModel {
     }
 
     /**
-     * Tryis to select the given it from the database.
+     * Tries to select the given item from the database.
      * @param {object} item The item to be checked for. 
      * @returns {Promise<boolean>} Returns true if the item is found. Otherwise returns false.
      */

@@ -16,7 +16,7 @@ async function socketEvents(socket, app, io) {
         item.marketId = itemDetails.market.id;
         const exists = await Item.exists(item);
         if (exists) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to add an item with props that are the same as other item!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to add an item with props that are the same as other item!");
             return;
         }
 
@@ -46,13 +46,13 @@ async function socketEvents(socket, app, io) {
         // Getting the item from the database.
         const item = await Item.getById(itemId);
         if (item === undefined) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to buy an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to buy an item that does not exist!");
             return;
         }
 
         // Checking if someone is updating this item.
         if (item.isBeingEdited == true) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to buy an item while another user is updating it!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to buy an item while another user is updating it!");
             return;
         }
 
@@ -62,11 +62,11 @@ async function socketEvents(socket, app, io) {
             return;
         }
 
-        // Updeting the item bought status to show that the item is bought.
+        // Updating the item bought status to show that the item is bought.
         item.isBought = true;
         const isSuccessful = await Item.update(item);
         if (!isSuccessful) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
@@ -88,7 +88,7 @@ async function socketEvents(socket, app, io) {
         // Getting the item from the database.
         const item = await Item.getById(itemId);
         if (item === undefined) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to return an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to return an item that does not exist!");
             return;
         }
 
@@ -102,11 +102,11 @@ async function socketEvents(socket, app, io) {
         const isMarketInUse = await Market.isUsed(itemDetails.market.id);
         const isCategoryInUse = await Category.isUsed(itemDetails.category.id);
 
-        // Updeting the item bought status to show that the item is not bought.
+        // Updating the item bought status to show that the item is not bought.
         item.isBought = false;
         const isSuccessful = await Item.update(item)
         if (!isSuccessful) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
@@ -130,13 +130,13 @@ async function socketEvents(socket, app, io) {
         // Getting the item from the database.
         const item = await Item.getById(itemId);
         if (item === undefined) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to delete an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to delete an item that does not exist!");
             return;
         }
 
         // Checking fi someone is editing the item.
         if (item.isBeingEdited == true) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to delete an item that is being edited by another user!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to delete an item that is being edited by another user!");
             return;
         }
 
@@ -149,11 +149,11 @@ async function socketEvents(socket, app, io) {
         // Delete the item.
         const isSuccessful = await Item.delete(itemId);
         if (!isSuccessful) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to delete an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to delete an item that does not exist!");
             return;
         }
 
-        // Deliting the category and market of the old item if they are empty.
+        // Deleting the category and market of the old item if they are empty.
         await deleteSectionsIfEmpty(itemDetails.market.id, itemDetails.category.id);
 
         
@@ -169,7 +169,7 @@ async function socketEvents(socket, app, io) {
         // Getting the item from the database.
         const foundItem = await Item.getById(item.id);
         if (foundItem === undefined) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
@@ -186,13 +186,13 @@ async function socketEvents(socket, app, io) {
 
         // If it does that means that there is another item that have the same name quantity and unit as well as being in the same category and market.
         if (exists) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item with props that are the same as other item!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to update an item with props that are the same as other item!");
 
             // Update the editing status to show that the item is not edited anymore.
             foundItem.isBeingEdited = false;
             const isSuccessful = await Item.update(foundItem);
             if (!isSuccessful) {
-                socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
+                socket.emit("Denied action", "NOT PERMITTED! Trying to update an item that does not exist!");
                 return;
             }
             return;
@@ -201,15 +201,15 @@ async function socketEvents(socket, app, io) {
         // Update the item.
         const isSuccessful = await Item.update(item);
         if (!isSuccessful) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
-        // Getting the category and market of the old item do that we can delete them if thay are empty.
-        const oldItemDetalis = await getSectionsById(foundItem);
+        // Getting the category and market of the old item do that we can delete them if they are empty.
+        const oldItemDetails = await getSectionsById(foundItem);
 
-        // Deliting the category and market of the old item if they are empty.
-        await deleteSectionsIfEmpty(oldItemDetalis.market.id, oldItemDetalis.category.id);
+        // Deleting the category and market of the old item if they are empty.
+        await deleteSectionsIfEmpty(oldItemDetails.market.id, oldItemDetails.category.id);
 
         // Checking if the category and the market are used meaning are there any unbought items in them. If there are, they are rendered and we should not render them again.
         const isMarketInUse = await Market.isUsed(itemDetails.market.id, item.id);
@@ -233,13 +233,13 @@ async function socketEvents(socket, app, io) {
         // Getting the item from the database.
         const item = await Item.getById(itemId);
         if (item === undefined) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
         // Checking fi someone is editing the item.
         if (item.isBeingEdited == true) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item while another user is updating it!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to update an item while another user is updating it!");
             return;
         }
 
@@ -247,7 +247,7 @@ async function socketEvents(socket, app, io) {
         item.isBeingEdited = true;
         const isSuccessful = await Item.update(item);
         if (!isSuccessful) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
@@ -268,13 +268,13 @@ async function socketEvents(socket, app, io) {
         // Getting the item from the database.
         const item = await Item.getById(itemId);
         if (item === undefined) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
         // Checking fi someone is editing the item.
         if (item.isBeingEdited == false) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to inpterrupt the updating without starting to update in first place!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to interrupt the updating without starting to update in first place!");
             return;
         }
 
@@ -282,7 +282,7 @@ async function socketEvents(socket, app, io) {
         item.isBeingEdited = false;
         const isSuccessful = await Item.update(item);
         if (!isSuccessful) {
-            socket.emit("Unpermitted action", "NOT PERMITTED! Trying to update an item that does not exist!");
+            socket.emit("Denied action", "NOT PERMITTED! Trying to update an item that does not exist!");
             return;
         }
 
@@ -306,11 +306,11 @@ async function socketEvents(socket, app, io) {
             // Delete the item.
             const isSuccessful = await Item.delete(item.id);
             if (!isSuccessful) {
-                socket.emit("Unpermitted action", "NOT PERMITTED! Trying to delete an item that does not exist!");
+                socket.emit("Denied action", "NOT PERMITTED! Trying to delete an item that does not exist!");
                 return;
             }
       
-            // Deliting the category and market of the old item if they are empty.
+            // Deleting the category and market of the old item if they are empty.
             await deleteSectionsIfEmpty(itemDetails.market.id, itemDetails.category.id);
         }
 
@@ -327,7 +327,7 @@ async function socketEvents(socket, app, io) {
         // Array that contains an object for each renderedElement and a bool showing if the item is bought or not. 
         const itemElements = [];
 
-        // Map in which are saved all markets and there catrgories that have been created.
+        // Map in which are saved all markets and there categories that have been created.
         const createdCombinations = new Map();
 
         for (const item of items) { 
@@ -374,7 +374,7 @@ async function socketEvents(socket, app, io) {
     /**
      * Returns the category and the market that the item is in using the categoryName and the marketName.
      * @param {object} item The item of which we want to find the category and the market.
-     * @param {boolean} [createIfNotExists] Optional - if its true and the category or the market are not found, thay will be created.
+     * @param {boolean} [createIfNotExists] Optional - if its true and the category or the market are not found, they will be created.
      * @returns {Promise<object>} An object containing hadMarket and had category that are showing if they were found or if they are created by this method. Category and market contain the found or created category and market.
      */
     async function getSectionsByName(item, createIfNotExists = false) {
@@ -448,7 +448,7 @@ async function socketEvents(socket, app, io) {
     /**
      * Returns the category and the market that the item is in using the categoryId.
      * @param {object} item The item of which we want to find the category and the market.
-     * @returns {Promise<object>} An object contaning the category and the market of the item.
+     * @returns {Promise<object>} An object containing the category and the market of the item.
      */
     async function getSectionsById(item) {
         const result = {};
@@ -521,7 +521,7 @@ async function socketEvents(socket, app, io) {
 
     /**
      * Used to render segments.
-     * @param {string} name The name ot the view that is to be renedered.
+     * @param {string} name The name ot the view that is to be rendered.
      * @param {object} content The content that is to be rendered.
      * @returns {Promise<string>} Returns rendered content.
      */
