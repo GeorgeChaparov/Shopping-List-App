@@ -5,7 +5,7 @@ export class BaseModel {
   
     /**
      * Gets and returns the row that matches the given id.
-     * @param {number | string} id The id of the row that is to be retreved.
+     * @param {number | string} id The id of the row that is to be retrieved.
      * @returns {Promise<object>} Returns the first found row. Otherwise returns undefined.
      */
     static async getById(id) {

@@ -14,6 +14,7 @@ await db.exec(`
 `);
 
 await db.exec(`
+    drop table item;
     CREATE TABLE IF NOT EXISTS item (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         isBought INTEGER NOT NULL
@@ -26,11 +27,13 @@ await db.exec(`
         categoryId INTEGER REFERENCES category (id)
     );
 
+    drop table market;
     CREATE TABLE IF NOT EXISTS market (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL
     );
 
+    drop table category;
     CREATE TABLE IF NOT EXISTS category (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL CHECK (
@@ -41,7 +44,9 @@ await db.exec(`
                 'Cheese and Milk', 
                 'Breads and Snacks', 
                 'Household objects', 
-                'Drinks'
+                'Drinks',
+                'Grains',
+                'Spices'
             )
         ),
         marketId INTEGER REFERENCES market (id) 
